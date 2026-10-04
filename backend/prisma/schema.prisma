@@ -1,0 +1,40 @@
+generator client {
+  provider   = "prisma-client-js"
+  // "client" engine = pure TypeScript/WASM query compiler used with a driver adapter.
+  // No native Rust query-engine binary is needed at runtime.
+  engineType = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum Status {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model Ticket {
+  id            String   @id @default(uuid())
+  title         String   @db.VarChar(120)
+  description   String
+  customerEmail String
+  priority      Priority
+  status        Status   @default(OPEN)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Filter columns + the default sort column
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([customerEmail])
+}

@@ -1,0 +1,26 @@
+{
+  "name": "support-ticket-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Support Ticket Dashboard - Next.js frontend + Express/Prisma/PostgreSQL backend",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "db:generate": "npm run db:generate -w backend",
+    "db:migrate": "npm run db:migrate -w backend",
+    "db:seed": "npm run db:seed -w backend",
+    "test": "npm run test -w backend",
+    "lint": "npm run lint -w frontend",
+    "db:reseed": "npm run db:reseed -w backend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
