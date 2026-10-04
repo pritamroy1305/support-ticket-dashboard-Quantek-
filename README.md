@@ -1,231 +1,749 @@
 # Support Ticket Dashboard
 
-## Overview
+A full-stack web app for managing customer support tickets.
 
-A small full-stack app for browsing and managing customer support tickets. A Next.js frontend talks to a separate Express REST API, which stores data in PostgreSQL through Prisma. Search, filtering, sorting and pagination all run in the database, and the summary counts always cover the whole dataset.
+The frontend is built with Next.js and the backend is a separate Express API. PostgreSQL is used for storing the tickets and Prisma handles the database queries/migrations.
+
+The main goal was to keep the app simple but still handle things like searching, filters, pagination and validation properly from the backend.
 
 ## Features
 
-- Dashboard with summary cards (Total / Open / In Progress / Resolved) from `GET /api/tickets/summary`; never affected by filters
-- Ticket list: table on desktop, cards on mobile
-- Debounced backend search (title or customer email, case-insensitive)
-- Status and priority filters, newest/oldest sorting, all combinable
-- Backend pagination (10 per page), Previous/Next and numbered pages, page resets to 1 when search/filters/sort change
-- Create ticket form (React Hook Form + Zod) with inline field errors, including backend validation errors
-- Ticket details page `/tickets/[id]` with editable status/priority, "Save Changes", success/error toasts; values persist after refresh
-- Loading, empty ("No tickets found."), and error ("Unable to load tickets." + Retry) states
-- Centralized API error format, Zod validation, UUID/enum/query validation, 404/400/500 handling
-- 30 seeded tickets (10 per status, all status/priority combinations), 25 automated API tests
+- Create support tickets
+- View all tickets from the dashboard
+- Summary cards for Total, Open, In Progress and Resolved tickets
+- Search tickets using title or customer email
+- Search is case-insensitive
+- Filter tickets by status
+- Filter by priority
+- Sort by newest or oldest
+- Pagination (10 tickets per page)
+- Previous/Next + page numbers
+- Ticket details page
+- Update ticket status and priority
+- Form validation using Zod
+- Loading, error and empty states
+- Responsive layout for mobile and desktop
+- 30 seed tickets
+- 25 backend API tests
+
+The summary cards always show numbers from the complete database. So applying a filter or searching something does not change the summary numbers.
 
 ## Tech Stack
 
-| Layer | Tech |
+| Part | Tech |
 |---|---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 3, shadcn-style components (button, badge, etc.), React Hook Form, Zod |
-| Backend | Node.js, Express 5, TypeScript, Zod |
-| Database | PostgreSQL, Prisma ORM 6 |
-| Testing | Vitest, Supertest |
+| Frontend | Next.js 15, React 19, TypeScript |
+| Styling | Tailwind CSS 3, shadcn-style components |
+| Forms | React Hook Form + Zod |
+| Backend | Node.js, Express 5, TypeScript |
+| Database | PostgreSQL |
+| ORM | Prisma 6 |
+| Testing | Vitest + Supertest |
 
-## Architecture
+## How it works
 
+The frontend runs on port `3000` and communicates with the Express API running on `4000`.
+
+```text
+Next.js (:3000)
+      |
+      | fetch
+      v
+Express API (:4000)
+      |
+      | Prisma
+      v
+PostgreSQL
 ```
-Browser (Next.js, :3000)  --fetch-->  Express API (:4000)  --Prisma-->  PostgreSQL
- components + hooks                    routes -> controllers ->          Ticket table
- lib/api.ts (only fetch caller)        validators (Zod) -> services
+
+On backend I separated the logic into routes, controllers, validators and services.
+
+Basic request flow:
+
+```text
+route -> controller -> validation -> service -> prisma -> database
 ```
 
-Requests flow `route -> controller (validates input with Zod) -> service (Prisma queries) -> JSON`. Any thrown error reaches one error-handling middleware that produces the consistent `{ success: false, error }` body.
+Controllers mostly deal with the request/response and validation, while database related code stays inside services.
+
+There is also one error handling middleware so API errors follow the same response format.
 
 ## Project Structure
 
-```
+```text
 backend/
-  prisma/            schema.prisma, migrations/, seed.ts
+  prisma/
+    schema.prisma
+    migrations/
+    seed.ts
+
   src/
-    routes/          URL -> controller mapping
-    controllers/     parse/validate request, call service, send response
-    services/        all Prisma/database logic
-    validators/      Zod schemas (create, update, id, list query)
-    middleware/      notFound + central error handler
-    utils/, types/, lib/prisma.ts, config.ts, app.ts, server.ts
-  tests/             Vitest + Supertest API tests, test-DB safety/setup
+    routes/
+    controllers/
+    services/
+    validators/
+    middleware/
+    utils/
+    types/
+    lib/
+    config.ts
+    app.ts
+    server.ts
+
+  tests/
+
 frontend/
-  app/               pages: / and /tickets/[id]
-  components/        dashboard pieces; components/ui = small reusable primitives
-  hooks/             useAsync (fetch + abort + reload), useDebounce
-  lib/               api client, Zod form schema, constants, utils
-  types/             API/domain types (mirror the backend contract)
+  app/
+  components/
+  hooks/
+  lib/
+  types/
 ```
 
-## Prerequisites
+The frontend API calls are mainly kept inside `lib/api.ts` instead of writing fetch calls in every component.
 
-- Node.js 20 or newer
-- PostgreSQL 14+ running locally (any user/password you like)
+## Requirements
+
+Before running the project make sure you have:
+
+- Node.js 20+
+- PostgreSQL 14+
 
 ## Installation
 
+Clone the repository and from the root folder run:
+
 ```bash
-npm install              # installs root, backend and frontend workspaces
+npm install
 ```
 
-## Environment Variables
+It will install dependencies for both frontend and backend workspaces.
 
-Create the real env files from `.env.example` (never commit them):
+## Environment Setup
+
+Create backend env:
 
 ```bash
 cp .env.example backend/.env
-echo 'NEXT_PUBLIC_API_URL=http://localhost:4000' > frontend/.env.local
 ```
 
-Edit `backend/.env` so the credentials match your PostgreSQL.
+For frontend create:
 
-| Variable | File | Purpose |
-|---|---|---|
-| `DATABASE_URL` | backend/.env | Development database connection string |
-| `TEST_DATABASE_URL` | backend/.env | Separate database for tests. Name must end in `_test` and differ from `DATABASE_URL` |
-| `BACKEND_PORT` | backend/.env | Port of the Express API (default 4000) |
-| `FRONTEND_URL` | backend/.env | Origin allowed by CORS (default http://localhost:3000) |
-| `NEXT_PUBLIC_API_URL` | frontend/.env.local | Base URL of the API used by the browser |
+```text
+frontend/.env.local
+```
+
+and add:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:4000
+```
+
+The backend `.env` should contain something like:
+
+```env
+DATABASE_URL=your_database_url
+TEST_DATABASE_URL=your_test_database_url
+BACKEND_PORT=4000
+FRONTEND_URL=http://localhost:3000
+```
+
+Change the database username/password according to your local PostgreSQL setup.
+
+Important: `TEST_DATABASE_URL` should be a different database and its name should end with `_test`.
+
+This is done so tests don't accidentally delete or modify development data.
 
 ## Database Setup
 
-Create the two databases (adjust user/host as needed), then generate the client and run migrations:
+Create two databases:
 
 ```bash
 createdb support_tickets
 createdb support_tickets_test
-npm run db:generate      # prisma generate
-npm run db:migrate       # prisma migrate dev (applies backend/prisma/migrations)
 ```
 
-Indexes exist on `status`, `priority`, `createdAt` and `customerEmail`.
+Generate Prisma client:
+
+```bash
+npm run db:generate
+```
+
+Run migrations:
+
+```bash
+npm run db:migrate
+```
+
+There are indexes on `status`, `priority`, `createdAt` and `customerEmail`.
 
 ## Seed Data
 
+To add sample tickets:
+
 ```bash
-npm run db:seed          # inserts 30 tickets; skipped if tickets already exist
-npm run db:reseed        # deletes all tickets and re-inserts the 30
+npm run db:seed
 ```
 
-Seed data is deterministic: 10 OPEN, 10 IN_PROGRESS, 10 RESOLVED, covering every status/priority combination with creation dates spread over the last ~4 weeks.
+This adds 30 tickets.
 
-## Running the Application
+The data contains:
 
-From the repository root:
+```text
+10 OPEN
+10 IN_PROGRESS
+10 RESOLVED
+```
+
+Different priority combinations are included and the created dates are spread across around 4 weeks.
+
+If tickets already exist then normal seed will skip inserting them again.
+
+To completely reset the tickets:
+
+```bash
+npm run db:reseed
+```
+
+This deletes the current tickets and inserts the seed data again.
+
+## Running the Project
+
+From root:
 
 ```bash
 npm run dev
 ```
 
-This starts the API on http://localhost:4000 and the frontend on http://localhost:3000. To run them separately:
+Frontend:
+
+```text
+http://localhost:3000
+```
+
+Backend:
+
+```text
+http://localhost:4000
+```
+
+You can also run them separately if needed.
+
+Backend:
 
 ```bash
-# Terminal 1
 npm run dev -w backend
-# Terminal 2
+```
+
+Frontend:
+
+```bash
 npm run dev -w frontend
 ```
 
-## Running Tests
+## API
+
+All successful API responses use:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Errors use:
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Something went wrong"
+  }
+}
+```
+
+Validation errors can also contain `details`.
+
+---
+
+### Create Ticket
+
+```http
+POST /api/tickets
+```
+
+Example body:
+
+```json
+{
+  "title": "Unable to login",
+  "description": "Customer cannot access their account.",
+  "customerEmail": "customer@example.com",
+  "priority": "HIGH",
+  "status": "OPEN"
+}
+```
+
+`status` is optional. If it is not provided then `OPEN` is used by default.
+
+Successful creation returns `201`.
+
+For invalid input the API returns `400`.
+
+Example:
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Validation failed",
+    "details": [
+      {
+        "field": "customerEmail",
+        "message": "Invalid email address"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Get Tickets
+
+```http
+GET /api/tickets
+```
+
+Supported query params:
+
+- `search`
+- `status`
+- `priority`
+- `sort`
+- `page`
+- `limit`
+
+Example:
+
+```text
+GET /api/tickets?search=login&status=OPEN&priority=HIGH&sort=newest&page=1&limit=10
+```
+
+Status values:
+
+```text
+OPEN
+IN_PROGRESS
+RESOLVED
+```
+
+Priority:
+
+```text
+LOW
+MEDIUM
+HIGH
+```
+
+Sort:
+
+```text
+newest
+oldest
+```
+
+Default page is `1` and default limit is `10`.
+
+Maximum limit is `50`.
+
+Example response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "tickets": [
+      {
+        "id": "...",
+        "title": "...",
+        "description": "...",
+        "customerEmail": "...",
+        "priority": "HIGH",
+        "status": "OPEN",
+        "createdAt": "...",
+        "updatedAt": "..."
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3
+    }
+  }
+}
+```
+
+Search, filtering, sorting and pagination are all done in database queries.
+
+I didn't fetch all tickets and then filter them on frontend because that wouldn't scale properly once the number of tickets increases.
+
+Search checks both title and customer email.
+
+---
+
+### Ticket Summary
+
+```http
+GET /api/tickets/summary
+```
+
+Example:
+
+```json
+{
+  "success": true,
+  "data": {
+    "total": 30,
+    "open": 10,
+    "inProgress": 10,
+    "resolved": 10
+  }
+}
+```
+
+The summary is calculated separately from the ticket list.
+
+This means:
+
+```text
+Search -> summary stays same
+Filter -> summary stays same
+Pagination -> summary stays same
+```
+
+It always represents all tickets in database.
+
+---
+
+### Get Single Ticket
+
+```http
+GET /api/tickets/:id
+```
+
+Possible responses:
+
+```text
+200 - ticket found
+400 - invalid id
+404 - ticket not found
+```
+
+The ticket id is validated as UUID before querying the database.
+
+---
+
+### Update Ticket
+
+```http
+PATCH /api/tickets/:id
+```
+
+Currently only status and priority are editable.
+
+Example:
+
+```json
+{
+  "status": "RESOLVED",
+  "priority": "MEDIUM"
+}
+```
+
+You can send either one or both fields.
+
+At least one field has to be provided.
+
+Other fields are rejected because editing title/description/email wasn't part of the requirement.
+
+After update, the API returns the updated ticket and Prisma automatically updates `updatedAt`.
+
+## Frontend
+
+The dashboard shows summary cards first and then the ticket list.
+
+Desktop uses a table layout while mobile switches to cards because the table becomes hard to use on smaller screens.
+
+Search input is debounced so an API request isn't sent after every single key press immediately.
+
+Search, status, priority and sort can all be used together.
+
+When any of them changes, page is reset back to `1`.
+
+Otherwise it was possible to be on something like page 3, apply a filter with only one page of results and get an empty screen.
+
+## Create Ticket Form
+
+The create form uses React Hook Form with Zod.
+
+Validation errors are shown under the fields.
+
+Frontend validation is mainly for better UX. The backend validates the request again because frontend validation can always be bypassed.
+
+Backend validation errors are also mapped back to the form when possible.
+
+## Ticket Details
+
+Each ticket has its own page:
+
+```text
+/tickets/[id]
+```
+
+From there status and priority can be changed.
+
+After clicking **Save Changes**, the frontend sends a PATCH request.
+
+A success/error toast is shown depending on the result.
+
+The changes are stored in PostgreSQL so refreshing the page doesn't reset anything.
+
+## Loading and Error Handling
+
+I added basic states for API requests.
+
+While loading, the UI shows a loading state.
+
+If no tickets match:
+
+```text
+No tickets found.
+```
+
+If loading fails:
+
+```text
+Unable to load tickets.
+```
+
+There is also a Retry option instead of requiring a full page refresh.
+
+## Pagination
+
+Pagination happens on backend.
+
+The frontend only requests the page it currently needs.
+
+Example:
+
+```text
+?page=2&limit=10
+```
+
+Results are ordered by `createdAt` and then `id`.
+
+The second sort is mainly there so if two tickets have exactly same creation time the pagination order is still consistent.
+
+## Validation
+
+Zod is used for backend validation for:
+
+- create ticket body
+- update body
+- ticket UUID
+- status
+- priority
+- pagination
+- sort
+- query parameters
+
+The frontend also uses Zod for the create form.
+
+Backend validation is still treated as the final validation.
+
+## Testing
+
+Run tests with:
 
 ```bash
 npm test
 ```
 
-The tests use `TEST_DATABASE_URL` (default `.../support_tickets_test`). Before running, Vitest applies migrations to that database (`prisma migrate deploy`), and each test resets and re-creates its own fixtures. Tests refuse to run if the database name does not end in `_test` or equals `DATABASE_URL`, so development data is never touched.
+There are 25 API tests written with Vitest and Supertest.
 
-## API Documentation
+Tests run against `TEST_DATABASE_URL`.
 
-All responses use `{ "success": true, "data": ... }` or `{ "success": false, "error": { "message", "details?" } }`.
+Before running them, Prisma migrations are applied to the test database.
 
-### POST /api/tickets
-```json
-// request
-{ "title": "Unable to login", "description": "Customer cannot access their account.",
-  "customerEmail": "customer@example.com", "priority": "HIGH", "status": "OPEN" }
-```
-`status` is optional (default `OPEN`). Returns **201** with the created ticket, or **400**:
-```json
-{ "success": false, "error": { "message": "Validation failed",
-  "details": [ { "field": "customerEmail", "message": "Invalid email address" } ] } }
+The test setup also checks that:
+
+```text
+TEST_DATABASE_URL != DATABASE_URL
 ```
 
-### GET /api/tickets
-Query: `search`, `status` (OPEN|IN_PROGRESS|RESOLVED), `priority` (LOW|MEDIUM|HIGH), `sort` (newest|oldest, default newest), `page` (default 1), `limit` (default 10, max 50).
+and the test database name must end with:
 
-`GET /api/tickets?search=login&status=OPEN&priority=HIGH&sort=newest&page=1&limit=10`
-```json
-{ "success": true, "data": {
-  "tickets": [ { "id": "...", "title": "...", "description": "...", "customerEmail": "...",
-                 "priority": "HIGH", "status": "OPEN", "createdAt": "...", "updatedAt": "..." } ],
-  "pagination": { "page": 1, "limit": 10, "total": 25, "totalPages": 3 } } }
+```text
+_test
 ```
-Invalid query values return **400**.
 
-### GET /api/tickets/summary
-```json
-{ "success": true, "data": { "total": 30, "open": 10, "inProgress": 10, "resolved": 10 } }
-```
-Computed with one grouped count over the whole table; no query parameters are read.
+This is just a safety check because the tests reset data and I didn't want it touching my normal dev database by mistake.
 
-### GET /api/tickets/:id
-**200** with the full ticket, **404** `Ticket not found`, **400** for a malformed id.
+Tests cover things like:
 
-### PATCH /api/tickets/:id
-```json
-{ "status": "RESOLVED", "priority": "MEDIUM" }
-```
-Either field may be sent, at least one is required, other fields are rejected. Returns **200** with the updated ticket (`updatedAt` changes automatically), **404** if missing, **400** for invalid input.
+- creating tickets
+- empty title
+- title longer than allowed
+- empty description
+- invalid email
+- invalid status
+- invalid priority
+- malformed JSON
+- default OPEN status
+- status filters
+- priority filters
+- combined filters
+- search by title
+- search by email
+- case insensitive search
+- search + filters
+- newest sorting
+- oldest sorting
+- invalid query params
+- pagination metadata
+- pagination last page
+- no duplicate tickets between pages
+- getting single ticket
+- invalid UUID
+- ticket not found
+- updating tickets
+- update persistence
+- summary counts
 
 ## Screenshots
 
-Real screenshots of the running app live in [`docs/screenshots/`](docs/screenshots). Take them after `npm run dev` + `npm run db:seed`:
+Screenshots are inside:
 
-| File | Shows |
+```text
+docs/screenshots/
+```
+
+Files:
+
+| Screenshot | What it shows |
 |---|---|
-| `01-dashboard.png` | Dashboard with summary counts |
-| `02-search-filters.png` | Search + status/priority filters (note summary cards unchanged) |
-| `03-pagination.png` | Page 2 of the list |
-| `04-create-ticket.png` | Create form, ideally with validation errors |
-| `05-ticket-details.png` | Ticket details and edit controls |
-| `06-mobile.png` | Mobile layout (browser dev tools, ~390px wide) |
+| `01-dashboard.png` | Main dashboard |
+| `02-search-filters.png` | Search and filters |
+| `03-pagination.png` | Second page |
+| `04-create-ticket.png` | Create ticket form |
+| `05-ticket-details.png` | Ticket details/edit |
+| `06-mobile.png` | Mobile version |
 
-## Extending the Code
+I took the screenshots after running the app and adding the seed data.
 
-- **New ticket field**: add it to `backend/prisma/schema.prisma` -> `npx prisma migrate dev` -> `validators/ticket.validators.ts` -> `frontend/types/ticket.ts`, `lib/schemas.ts`, `CreateTicketDialog.tsx`.
-- **New filter**: add it to `listTicketsQuerySchema`, to the `where` object in `services/ticket.service.ts`, then to `TicketListParams`, `lib/api.ts` (`listTickets`), `TicketFilters.tsx` and the `filterKey` in `app/page.tsx`.
-- **New status/priority value**: change the Prisma enum, the Zod enums in the validators, and `types/ticket.ts` + `lib/constants.ts` on the frontend.
+## Why I used these technologies
 
-## Technical Decisions
+### Next.js
 
-- **Next.js**: file-based routing for `/` and `/tickets/[id]`, good TypeScript/Tailwind support.
-- **Express (separate)**: keeps the API independent from the UI and makes the layers (routes, controllers, services) easy to read and discuss.
-- **PostgreSQL**: relational data, native enums, case-insensitive search via `ILIKE`, proper indexes.
-- **Prisma 6**: typed queries and migrations. It is used with the `pg` driver adapter and `engineType = "client"`, so no native query-engine binary is needed at runtime (Prisma 6 is used rather than 7 to keep the familiar `url = env(...)` datasource).
-- **Zod**: one validation language on both sides; backend is the source of truth, frontend validation is only for UX.
-- **Frontend state**: a small `useAsync` hook (abortable fetch + reload) is enough; no state library or SWR.
-- **Types**: the frontend mirrors the API contract in `frontend/types/ticket.ts` instead of a shared package, to avoid workspace build complexity.
-- **Stable pagination**: results are ordered by `createdAt` then `id`, so equal timestamps cannot duplicate or skip rows across pages.
+Mainly because routing is straightforward with App Router and it works nicely with TypeScript and Tailwind.
+
+I only needed the dashboard route and dynamic ticket details route so Next.js was enough for this.
+
+### Express
+
+I kept Express separate from Next.js instead of putting the API inside Next.
+
+This makes frontend/backend responsibilities more clear and also made the API easier to test independently.
+
+### PostgreSQL
+
+The data is structured and relational, so PostgreSQL made sense here.
+
+It also handles the filtering and sorting queries without needing anything extra.
+
+Search currently uses case-insensitive `ILIKE`.
+
+### Prisma
+
+Used Prisma mainly for typed database queries and migrations.
+
+The project uses Prisma 6 with the `pg` driver adapter and `engineType = "client"`.
+
+### Zod
+
+Used Zod for validating API inputs.
+
+I also used it with React Hook Form on frontend so validation rules are easier to manage.
+
+### Frontend State
+
+I didn't add Redux/Zustand or another state library.
+
+For this size of project normal React state with a small `useAsync` hook was enough.
+
+The hook handles fetching, loading, errors, aborting requests and reload.
+
+## Extending it
+
+If I had to add another ticket field, the main places to update would be:
+
+```text
+Prisma schema
+backend validator
+frontend ticket type
+frontend form schema
+create ticket form
+```
+
+Then a Prisma migration would be required.
+
+For another filter:
+
+```text
+list query validator
+ticket service
+frontend API params
+TicketFilters
+dashboard state
+```
+
+New status or priority values would need updates in the Prisma enums, backend Zod enums and frontend constants/types.
 
 ## Assumptions
 
-- Single-tenant, no authentication; anyone who can reach the API can use it.
-- Search is a substring match on title and customer email.
-- Only `status` and `priority` are editable after creation, as specified.
-- `limit` is capped at 50 to protect the database.
+A few assumptions I made while building it:
 
-## Known Limitations
+- No authentication was required.
+- It's a single support team, not multi-tenant.
+- Search is substring based.
+- Status and priority are the only editable fields after creating a ticket.
+- Maximum API page size is 50.
 
-- No authentication, deletion, or full-text search (uses `ILIKE`; fine at this scale, would need trigram/full-text indexes for very large tables).
-- Frontend has no automated tests; only the API is tested.
-- Ticket detail "Save Changes" overwrites with last write (no optimistic locking).
+## Things I would improve
 
-## Testing
+There are few things I would add if this was going further than the assignment.
 
-`backend/tests/tickets.api.test.ts` (25 tests): validation of every invalid create case (title empty/over 120, empty description, bad email, bad priority/status, malformed JSON), default status and 201, status/priority filters and their combinations, case-insensitive search by title and email, search + filters together, newest/oldest ordering, invalid query params, pagination (max 10, metadata, last page, no duplicates), single ticket 200/404/400, PATCH persistence and `updatedAt`, PATCH 404/400, and summary counts matching the whole database and ignoring filter parameters.
+Authentication would be the first one because currently anyone who can access the API can create/update tickets.
 
+There is also no delete functionality right now.
 
+Search uses `ILIKE`, which is totally fine for 30 tickets and smaller datasets. For a much bigger dataset I would probably use PostgreSQL trigram indexes or full-text search.
+
+Frontend automated tests are also missing. Currently the automated test coverage is mainly focused on the backend API.
+
+Another issue is concurrent editing. If two people update the same ticket, the last update wins. I didn't add versioning/optimistic locking for this assignment.
 
 ## Time Spent
 
-> **UPDATE BEFORE SUBMITTING:** "Setup 1h, backend 2h, frontend 2h, tests 1h, docs 0.5h".
+Approx time:
+
+```text
+Setup       - 1 hour
+Backend     - 2 hours
+Frontend    - 2 hours
+Tests       - 1 hour
+README/docs - around 30 mins
+```
