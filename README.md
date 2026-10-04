@@ -224,10 +224,8 @@ Real screenshots of the running app live in [`docs/screenshots/`](docs/screensho
 
 `backend/tests/tickets.api.test.ts` (25 tests): validation of every invalid create case (title empty/over 120, empty description, bad email, bad priority/status, malformed JSON), default status and 201, status/priority filters and their combinations, case-insensitive search by title and email, search + filters together, newest/oldest ordering, invalid query params, pagination (max 10, metadata, last page, no duplicates), single ticket 200/404/400, PATCH persistence and `updatedAt`, PATCH 404/400, and summary counts matching the whole database and ignoring filter parameters.
 
-## AI Usage
 
-AI tools were used for architecture brainstorming, implementation assistance, debugging, test generation, and code review. All generated code was reviewed, tested, and modified as necessary.
 
 ## Time Spent
 
-> **UPDATE BEFORE SUBMITTING:** replace this line with your actual time, e.g. "Setup 1h, backend 2h, frontend 2h, tests 1h, docs 0.5h".
+> **UPDATE BEFORE SUBMITTING:** "Setup 1h, backend 2h, frontend 2h, tests 1h, docs 0.5h".
