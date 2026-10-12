@@ -10,3 +10,10 @@ export const createTicketFormSchema = z.object({
 });
 
 export type CreateTicketFormValues = z.infer<typeof createTicketFormSchema>;
+
+/*
+ * This file contains the form validation schema for creating a new ticket.
+ * Before the frontend sends the ticket data to the backend, it checks whether
+ * the user has entered valid and complete information, such as a valid title,
+ * description, email address, priority, and status.
+ */
