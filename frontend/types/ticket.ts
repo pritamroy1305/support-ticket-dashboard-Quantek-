@@ -1,4 +1,17 @@
 // Mirrors the backend API contract (backend/src/types/ticket.ts + Prisma enums).
+/*
+ * This file contains the shared TypeScript types and data structures used by the
+ * ticket management system. It defines the allowed ticket priorities, statuses,
+ * sorting options, ticket structure, pagination data, dashboard summaries, API
+ * success and error responses, and the request payloads used when creating or
+ * updating tickets. These types act as a contract between the frontend and
+ * backend, ensuring that both sides use the same data structure and preventing
+ * invalid values or mismatched API data during development.
+ */
+
+
+
+
 export const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
 export const STATUSES = ["OPEN", "IN_PROGRESS", "RESOLVED"] as const;
 export const SORT_OPTIONS = ["newest", "oldest"] as const;
